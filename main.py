@@ -3,7 +3,10 @@ import os
 from openai import OpenAI
 
 # Replace with your actual OpenAI API key
-OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+
+openai_api_key = st.secrets["OPENAI_API_KEY"]
+
+OPENAI_API_KEY = openai_api_key
 st.title("💬 모리")
 st.caption("🚀 ADHD 인들을 위한 AI 챗봇 모리")
 
