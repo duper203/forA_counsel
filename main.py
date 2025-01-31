@@ -3,7 +3,7 @@ from openai import OpenAI
 # from get_context_2 import retrieve_relevant_info
 import chromadb
 from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction
-import fitz  # PyMuPDF
+import fitz 
 
 # Replace with your actual OpenAI API key
 
