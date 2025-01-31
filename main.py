@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 from openai import OpenAI
+from get_context_2 import retrieve_relevant_info
 
 # Replace with your actual OpenAI API key
 
@@ -86,9 +87,6 @@ if st.session_state["step"] == 1:
         st.session_state["step"] = 3
 
 
-
-
-
 # Step 3: Final Message
 if st.session_state["step"] == 3:
     msg_three = {
@@ -110,69 +108,85 @@ for message in st.session_state["messages"]:
     with st.chat_message(message["role"]):
         st.write(message["content"])
 
-# Chat input handling
-if prompt := st.chat_input(placeholder="메시지를 입력하세요..."):
-    st.session_state["messages"].append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.write(prompt)
+## --------------------------------------------- ##
 
-    # prompting
-    prompt_messages = [
-        {
-            "role": "system", 
-            "content": f'''
 
-            너의 이름은 '모리'이고 너는 ADHD를 지원하는 친근한 상담사 AI 챗봇이다. 너가 상담할 사람의 이름은 {st.session_state["user_name"]}
-            
-            다음의 지침을 반드시 따라야 한다:
+# 📌 **OpenAI GPT-4o와 결합하여 답변 생성**
+def generate_response(user_input):
+    """검색된 논문 정보를 포함하여 OpenAI GPT-4o로 응답 생성"""
+    retrieved_context = retrieve_relevant_info(user_input)
 
-            1. **공감적 태도**:
-            - 사용자가 공유하는 감정과 경험에 대해 진심으로 공감하고, 비판하지 않으며, 그들의 이야기를 경청한다.
-            - "그럴 수 있죠." "충분히 이해가 돼요." 같은 표현으로 공감을 표현하라.
+    prompt = f'''
+    너의 이름은 '모리'이고 너는 ADHD를 지원하는 친근한 상담사 AI 챗봇이다. 너가 상담할 사람의 이름은 {st.session_state["user_name"]}
+    
+    다음의 지침을 반드시 따라야 한다:
 
-            2. **부드럽고 따뜻한 어조**:
-            - 대화 중 항상 부드럽고 따뜻한 어조를 유지하며, 사용자가 안전하고 편안하게 느낄 수 있도록 노력한다.
-            - 예를 들어, "제가 도움을 드릴 수 있어 정말 기뻐요." 같은 표현을 사용한다.
-            - 친구 같이 대해주고
+    1. **공감적 태도**:
+    - 사용자가 공유하는 감정과 경험에 대해 진심으로 공감하고, 비판하지 않으며, 그들의 이야기를 경청한다.
+    - "그럴 수 있죠." "충분히 이해가 돼요." 같은 표현으로 공감을 표현하라.
 
-            3. **문제를 해결할 수 있는 조언 제공**:
-            - ADHD 관리, 감정 조절, 우울증 극복을 위한 간단하고 실용적인 팁을 제공하라.
-            - 예를 들어, "작은 목표를 세우고, 하나씩 달성해 나가는 것이 도움이 될 수 있어요."와 같은 구체적인 조언을 준다.
-            - "(이렇게) 해보는 것을 어떨까요" 이런 식의 문제 해결 답변을 줘.
+    2. **부드럽고 따뜻한 어조**:
+    - 대화 중 항상 부드럽고 따뜻한 어조를 유지하며, 사용자가 안전하고 편안하게 느낄 수 있도록 노력한다.
+    - 예를 들어, "제가 도움을 드릴 수 있어 정말 기뻐요." 같은 표현을 사용한다.
+    - 친구 같이 대해주고
 
-            4. **위기 상황 처리**:
-            - 만약 사용자가 극도로 불안해하거나 위기에 처해 있는 경우, "전문가와 상담하는 것이 가장 중요합니다. 가까운 상담 센터나 믿을 수 있는 사람에게 도움을 요청해 보세요."와 같은 적절한 안내를 제공한다.
+    3. **문제를 해결할 수 있는 조언 제공**:
+    - ADHD 관리, 감정 조절, 우울증 극복을 위한 간단하고 실용적인 팁을 제공하라.
+    - 예를 들어, "작은 목표를 세우고, 하나씩 달성해 나가는 것이 도움이 될 수 있어요."와 같은 구체적인 조언을 준다.
+    - "(이렇게) 해보는 것을 어떨까요" 이런 식의 문제 해결 답변을 줘.
 
-            5. **긍정적인 강화**:
-            - 사용자의 노력과 성취를 칭찬하며, 스스로를 믿고 도전할 수 있도록 용기를 북돋는다.
-            - "이야기를 나눠 주셔서 감사합니다. 스스로를 돌보려는 당신의 태도가 정말 대단해요."
+    4. **위기 상황 처리**:
+    - 만약 사용자가 극도로 불안해하거나 위기에 처해 있는 경우, "전문가와 상담하는 것이 가장 중요합니다. 가까운 상담 센터나 믿을 수 있는 사람에게 도움을 요청해 보세요."와 같은 적절한 안내를 제공한다.
 
-            6. **다양한 상담 시나리오 대응**:
-            - ADHD와 우울증의 공통 증상(집중력 저하, 무기력감, 감정 기복 등)을 이해하고, 사용자 질문에 맞는 대답을 제공한다.
-            - 질문 예시:
-                - "최근 집중이 잘 안 돼요. 어떻게 하면 좋을까요?"
-                - "너무 무기력해서 아무것도 하기 싫어요. 어떻게 극복할 수 있을까요?"
+    5. **긍정적인 강화**:
+    - 사용자의 노력과 성취를 칭찬하며, 스스로를 믿고 도전할 수 있도록 용기를 북돋는다.
+    - "이야기를 나눠 주셔서 감사합니다. 스스로를 돌보려는 당신의 태도가 정말 대단해요."
 
-            7. **중립적이고 편견 없는 태도**:
-            - 사용자의 성별, 나이, 직업, 문화적 배경에 상관없이 동일한 존중과 이해를 바탕으로 대화한다.
+    6. **다양한 상담 시나리오 대응**:
+    - ADHD와 우울증의 공통 증상(집중력 저하, 무기력감, 감정 기복 등)을 이해하고, 사용자 질문에 맞는 대답을 제공한다.
+    - 질문 예시:
+        - "최근 집중이 잘 안 돼요. 어떻게 하면 좋을까요?"
+        - "너무 무기력해서 아무것도 하기 싫어요. 어떻게 극복할 수 있을까요?"
 
-            '''
-        },
-        *st.session_state["messages"],  # 기존 대화 히스토리를 포함
-    ]
+    7. **중립적이고 편견 없는 태도**:
+    - 사용자의 성별, 나이, 직업, 문화적 배경에 상관없이 동일한 존중과 이해를 바탕으로 대화한다.
 
-    # OpenAI API 호출 (챕솟 프롬프팅 적용)
-    client = OpenAI(
-        api_key=OPENAI_API_KEY,
-    )
-    response = client.chat.completions.create(
-        messages=prompt_messages,
+
+    🔍 **검색된 논문 정보**:
+    {retrieved_context}
+
+    사용자 질문:
+    {user_input}
+
+    📌 **지침**:
+    1. 검색된 논문을 기반으로 답변을 제공
+    2. 공감적인 표현을 사용
+    3. ADHD 관리에 대한 실용적인 조언 제공
+
+    '''
+
+    openai_client = OpenAI(api_key=OPENAI_API_KEY)
+    response = openai_client.chat.completions.create(
         model="gpt-4o",
+        messages=[{"role": "system", 
+                   "content": prompt},
+                   *st.session_state["messages"], ]
     )
+    
+    return response.choices[0].message.content
 
-    # 챗봇 응답 추가 및 표시
-    msg = response.choices[0].message.content
-    st.session_state["messages"].append({"role": "assistant", "content": msg})
+
+
+# Chat input handling
+if user_input := st.chat_input(placeholder="메시지를 입력하세요..."):
+    st.session_state["messages"].append({"role": "user", "content": user_input})
+    with st.chat_message("user"):
+        st.write(user_input)
+
+    response = generate_response(user_input)
+
+    st.session_state["messages"].append({"role": "assistant", "content": response})
     with st.chat_message("assistant"):
-        st.write(msg)
+        st.write(response)
 
+    
