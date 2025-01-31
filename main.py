@@ -1,7 +1,9 @@
 import streamlit as st
-import os
 from openai import OpenAI
-from get_context_2 import retrieve_relevant_info
+# from get_context_2 import retrieve_relevant_info
+import chromadb
+from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction
+import fitz  # PyMuPDF
 
 # Replace with your actual OpenAI API key
 
@@ -110,6 +112,50 @@ for message in st.session_state["messages"]:
 
 ## --------------------------------------------- ##
 
+# ChromaDB 클라이언트 초기화
+chroma_client = chromadb.PersistentClient(path="./chroma_db")  # 로컬 DB 저장
+embedding_function = OpenAIEmbeddingFunction(api_key=OPENAI_API_KEY)
+# ChromaDB 컬렉션 생성
+collection = chroma_client.get_or_create_collection(name="adhd_docs", embedding_function=embedding_function)
+
+
+# 1. extract pdf
+
+
+def extract_text_from_pdf(pdf_path):
+    """PDF에서 텍스트 추출"""
+    doc = fitz.open(pdf_path)
+    text_list = []
+    
+    for page in doc:
+        text = page.get_text("text")
+        text_list.append(text)
+    
+    return text_list  # 페이지별 텍스트 리스트 반환
+
+
+def store_paper_in_chromadb(pdf_path, doc_id_prefix="adhd_paper"):
+    """PDF 논문에서 텍스트 추출 후 ChromaDB에 저장"""
+    text_list = extract_text_from_pdf(pdf_path)
+
+    for idx, text in enumerate(text_list):
+        collection.add(documents=[text], ids=[f"{doc_id_prefix}_{idx}"])
+    
+    print(f"📚 {len(text_list)}개의 페이지가 ChromaDB에 저장되었습니다.")
+
+# 예제 논문 저장
+store_paper_in_chromadb("./data/doc1.pdf")
+
+def retrieve_relevant_info(query, top_k=3):
+    """사용자 질문을 벡터화 후 ChromaDB에서 가장 관련 있는 문서 검색"""
+    results = collection.query(
+        query_texts=[query],
+        n_results=top_k  # 검색 결과 상위 3개 가져오기
+    )
+    
+    retrieved_texts = results["documents"][0] if "documents" in results else []
+    return "\n".join(retrieved_texts)  # 검색된 문서를 하나의 문자열로 반환
+
 
 # 📌 **OpenAI GPT-4o와 결합하여 답변 생성**
 def generate_response(user_input):
@@ -175,6 +221,7 @@ def generate_response(user_input):
     
     return response.choices[0].message.content
 
+## --------------------------------------------- ##
 
 
 # Chat input handling

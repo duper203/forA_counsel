@@ -2,7 +2,6 @@ import chromadb
 import os
 from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction
 import fitz  # PyMuPDF
-import os
 
 ## ------- setting ------- ##
 
