@@ -1,7 +1,7 @@
 import streamlit as st
 import os
 from openai import OpenAI
-from get_context_2 import retrieve_relevant_info
+# from get_context_2 import retrieve_relevant_info
 
 # Replace with your actual OpenAI API key
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
