@@ -1,4 +1,3 @@
 openai
 chromadb
 fitz
-pysqlite3-binarys
